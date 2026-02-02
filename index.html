@@ -2,30 +2,35 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Time to Gulf</title>
+  <title>Time to Gulf (MVP)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
+  <!-- Mapbox core -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet"/>
+
+  <!-- Mapbox Address Autocomplete -->
+  <script src="https://api.mapbox.com/search-js/v1.0.0-beta.26/web.js"></script>
+  <link rel="stylesheet" href="https://api.mapbox.com/search-js/v1.0.0-beta.26/web.css">
 
   <style>
     body { font-family: Arial, sans-serif; margin: 0; }
     .wrap { padding: 16px; max-width: 1100px; margin: auto; }
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
     label { font-size: 12px; opacity: 0.8; }
-    input, select, button {
+    select, button {
       padding: 10px;
       font-size: 14px;
-      width: 260px;
+      width: 220px;
     }
     button {
-      width: 160px;
       cursor: pointer;
       background: #0b5ed7;
       color: white;
       border: none;
+      height: 42px;
     }
-    #map { height: 520px; border-top: 1px solid #ddd; }
+    #map { height: 520px; border-top: 1px solid #ddd; margin-top: 10px; }
     .results {
       margin-top: 12px;
       padding: 12px;
@@ -33,6 +38,9 @@
       border: 1px solid #e5e5e5;
     }
     .small { font-size: 12px; opacity: 0.75; margin-top: 10px; }
+    #address-autofill {
+      width: 300px;
+    }
   </style>
 </head>
 
@@ -43,13 +51,14 @@
     <div class="row">
       <div>
         <label>Address</label><br/>
-        <input id="address" placeholder="1234 SE 10th St, Cape Coral, FL">
+        <div id="address-autofill"></div>
+        <input id="address" type="hidden">
       </div>
 
       <div>
         <label>Destination</label><br/>
         <select id="dest">
-          <option value="river">Caloosahatchee River</option>
+          <option value="river">Caloosahatchee River (Open Water)</option>
           <option value="matlacha">Matlacha Pass</option>
         </select>
       </div>
@@ -66,7 +75,7 @@
     </div>
 
     <div class="results" id="results">
-      Enter an address and click Calculate.
+      Start typing an address and select it from the list.
     </div>
 
     <div class="small">
@@ -77,9 +86,10 @@
   <div id="map"></div>
 
 <script>
-  // ⬇️ WE WILL FIX THIS TOKEN NEXT
+  // 🔑 MAPBOX TOKEN (keep yours here)
   mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
 
+  // Destinations
   const destinations = {
     river: { name: "Caloosahatchee River", lng: -81.9935, lat: 26.6201 },
     matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 }
@@ -90,6 +100,7 @@
     fast: 1.4
   };
 
+  // Map
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
@@ -98,7 +109,30 @@
   });
 
   let startMarker, endMarker;
+  let selectedStart = null;
 
+  // Address Autocomplete
+  const autofill = new MapboxSearch.Autofill({
+    accessToken: mapboxgl.accessToken,
+    options: {
+      country: "US",
+      proximity: { lng: -81.95, lat: 26.63 }
+    }
+  });
+
+  autofill.mount("#address-autofill");
+
+  autofill.addEventListener("retrieve", (e) => {
+    const f = e.detail.features[0];
+    selectedStart = {
+      lng: f.geometry.coordinates[0],
+      lat: f.geometry.coordinates[1],
+      place: f.properties.full_address || f.place_name
+    };
+    document.getElementById("address").value = selectedStart.place;
+  });
+
+  // Distance helper
   function miles(a, b) {
     const R = 3958.8;
     const dLat = (b.lat - a.lat) * Math.PI / 180;
@@ -111,42 +145,32 @@
     return 2 * R * Math.asin(Math.sqrt(x));
   }
 
-  async function geocode(addr) {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${mapboxgl.accessToken}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const [lng, lat] = data.features[0].center;
-    return { lng, lat, place: data.features[0].place_name };
-  }
-
-  document.getElementById("calc").onclick = async () => {
-    const addr = address.value.trim();
-    results.innerText = "Calculating...";
-
-    try {
-      const start = await geocode(addr);
-      const end = destinations[dest.value];
-
-      const d = miles(start, end) * multipliers[speed.value];
-      const mph = speed.value === "fast" ? 18 : 12;
-      const minutes = Math.round(d / mph * 60);
-
-      results.innerHTML = `
-        <strong>${minutes} minutes</strong><br/>
-        ${d.toFixed(1)} miles to ${end.name}
-      `;
-
-      if (startMarker) startMarker.remove();
-      if (endMarker) endMarker.remove();
-
-      startMarker = new mapboxgl.Marker().setLngLat([start.lng, start.lat]).addTo(map);
-      endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
-
-      map.fitBounds([[start.lng, start.lat], [end.lng, end.lat]], { padding: 60 });
-
-    } catch {
-      results.innerText = "Could not calculate. Try another address.";
+  document.getElementById("calc").onclick = () => {
+    if (!selectedStart) {
+      results.innerText = "Please select an address from the suggestions.";
+      return;
     }
+
+    const end = destinations[dest.value];
+    const dist = miles(selectedStart, end) * multipliers[speed.value];
+    const mph = speed.value === "fast" ? 18 : 12;
+    const minutes = Math.round(dist / mph * 60);
+
+    results.innerHTML = `
+      <strong>${minutes} minutes</strong><br/>
+      ${dist.toFixed(1)} miles to ${end.name}
+    `;
+
+    if (startMarker) startMarker.remove();
+    if (endMarker) endMarker.remove();
+
+    startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
+    endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
+
+    map.fitBounds(
+      [[selectedStart.lng, selectedStart.lat], [end.lng, end.lat]],
+      { padding: 60 }
+    );
   };
 </script>
 </body>
