@@ -22,7 +22,7 @@
       padding: 10px;
       font-size: 14px;
       height: 42px;
-      width: 240px;
+      width: 260px;
       box-sizing: border-box;
     }
 
@@ -35,7 +35,7 @@
     }
 
     mapbox-search-box {
-      width: 380px;
+      width: 420px;
       display: block;
       height: 42px;
     }
@@ -61,8 +61,11 @@
       <div>
         <label>Destination</label>
         <select id="dest">
-          <option value="river">Caloosahatchee River (Open Water)</option>
+          <option value="openWater">Nearest Open Water (closest exit)</option>
           <option value="matlacha">Matlacha Pass</option>
+          <option value="riverCapeHarbour">Caloosahatchee River (Cape Harbour)</option>
+          <option value="riverYachtClub">Caloosahatchee River (Yacht Club)</option>
+          <option value="riverSE">Caloosahatchee River (SE Cape)</option>
         </select>
       </div>
 
@@ -82,7 +85,7 @@
     </div>
 
     <div class="small">
-      Disclaimer: Estimates only. Not for navigation.
+      Disclaimer: Estimates only. Not for navigation. Open Water is an auto-selected closest exit point and does not yet follow canals.
     </div>
   </div>
 
@@ -95,12 +98,36 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
+    // Destinations
+    // Note: coordinates are "exit/POI anchors" for MVP. Canal routing comes later.
     const destinations = {
-      river: { name: "Caloosahatchee River", lng: -81.9935, lat: 26.6201 },
-      matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 }
+      // Open Water is a set of exits. We auto-pick nearest.
+      openWater: {
+        name: "Nearest Open Water",
+        exits: [
+          { name: "Matlacha Pass Exit", lng: -82.1168, lat: 26.6352 },
+
+          // Caloosahatchee River exits (several anchors)
+          { name: "River Exit (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
+          { name: "River Exit (Yacht Club)", lng: -81.9706, lat: 26.5450 },
+          { name: "River Exit (SE Cape)", lng: -81.9415, lat: 26.5480 },
+
+          // Optional additional “open water feeling” anchors
+          { name: "Pine Island Sound (near Matlacha)", lng: -82.1065, lat: 26.6510 }
+        ]
+      },
+
+      matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 },
+      riverCapeHarbour: { name: "Caloosahatchee River (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
+      riverYachtClub: { name: "Caloosahatchee River (Yacht Club)", lng: -81.9706, lat: 26.5450 },
+      riverSE: { name: "Caloosahatchee River (SE Cape)", lng: -81.9415, lat: 26.5480 }
     };
 
-    const multipliers = { conservative: 1.9, fast: 1.4 };
+    // MVP "water path factor"
+    const multipliers = {
+      conservative: 1.9,
+      fast: 1.4
+    };
 
     // =========================
     // MAP INIT
@@ -162,6 +189,20 @@
       return 2 * R * Math.asin(Math.sqrt(x));
     }
 
+    function pickNearestExit(start, exits) {
+      let best = exits[0];
+      let bestDist = Infinity;
+
+      for (const ex of exits) {
+        const d = miles(start, ex);
+        if (d < bestDist) {
+          bestDist = d;
+          best = ex;
+        }
+      }
+      return best;
+    }
+
     function drawRouteLine(start, end) {
       if (!mapReady) return;
 
@@ -191,18 +232,16 @@
     }
 
     // =========================
-    // SEARCH BOX INIT (RELIABLE)
+    // SEARCH BOX INIT
     // =========================
     function initSearchBox() {
       const searchBox = document.getElementById("searchBox");
       if (!searchBox) return;
 
-      // Set token and options
       searchBox.accessToken = MAPBOX_TOKEN;
       searchBox.proximity = "-81.95,26.63";
       searchBox.options = { country: "US", types: "address" };
 
-      // Attach handler (retrieve is the important event)
       searchBox.addEventListener("retrieve", (e) => {
         const start = extractCoordsFromRetrieveEvent(e);
         if (!start) return;
@@ -213,13 +252,11 @@
       });
     }
 
-    // Wait until the web component exists, then init
     if (window.customElements && customElements.whenDefined) {
       customElements.whenDefined("mapbox-search-box").then(() => {
         initSearchBox();
       });
     } else {
-      // Fallback, should not be needed
       window.addEventListener("DOMContentLoaded", initSearchBox);
     }
 
@@ -235,7 +272,13 @@
       const destKey = document.getElementById("dest").value;
       const speedKey = document.getElementById("speed").value;
 
-      const end = destinations[destKey];
+      let end;
+      if (destKey === "openWater") {
+        end = pickNearestExit(selectedStart, destinations.openWater.exits);
+      } else {
+        end = destinations[destKey];
+      }
+
       const dist = miles(selectedStart, end) * multipliers[speedKey];
       const mph = speedKey === "fast" ? 18 : 12;
       const minutes = Math.round((dist / mph) * 60);
