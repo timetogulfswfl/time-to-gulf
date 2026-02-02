@@ -5,43 +5,25 @@
   <title>Time to Gulf (MVP)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Mapbox Core -->
+  <!-- Mapbox GL JS -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet"/>
 
-  <!-- Mapbox Address Autocomplete -->
-  <script src="https://api.mapbox.com/search-js/v1.0.0-beta.26/web.js"></script>
-  <link rel="stylesheet" href="https://api.mapbox.com/search-js/v1.0.0-beta.26/web.css">
+  <!-- Mapbox Search JS (official web components) -->
+  <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-    }
-
-    .wrap {
-      padding: 16px;
-      max-width: 1100px;
-      margin: auto;
-    }
-
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: flex-end;
-    }
-
-    label {
-      font-size: 12px;
-      opacity: 0.8;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; }
+    .wrap { padding: 16px; max-width: 1100px; margin: auto; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    label { font-size: 12px; opacity: 0.8; display:block; margin-bottom: 6px; }
 
     select, button {
       padding: 10px;
       font-size: 14px;
-      width: 220px;
       height: 42px;
+      width: 240px;
+      box-sizing: border-box;
     }
 
     button {
@@ -49,56 +31,35 @@
       background: #0b5ed7;
       color: white;
       border: none;
+      width: 180px;
     }
 
-    #address-autofill {
-      width: 320px;
-    }
-
-    /* 🔑 THIS FIXES THE "CAN'T TYPE" PROBLEM */
-    #address-autofill input {
-      width: 100%;
-      padding: 10px;
-      font-size: 14px;
+    /* Make the Mapbox Search Box match our sizing */
+    mapbox-search-box {
+      width: 360px;
+      display: block;
       height: 42px;
-      box-sizing: border-box;
     }
 
-    #map {
-      height: 520px;
-      border-top: 1px solid #ddd;
-      margin-top: 12px;
-    }
-
-    .results {
-      margin-top: 12px;
-      padding: 12px;
-      background: #f7f7f7;
-      border: 1px solid #e5e5e5;
-    }
-
-    .small {
-      font-size: 12px;
-      opacity: 0.75;
-      margin-top: 8px;
-    }
+    #map { height: 520px; border-top: 1px solid #ddd; margin-top: 12px; }
+    .results { margin-top: 12px; padding: 12px; background: #f7f7f7; border: 1px solid #e5e5e5; }
+    .small { font-size: 12px; opacity: 0.75; margin-top: 8px; line-height: 1.35; }
   </style>
 </head>
 
 <body>
-
   <div class="wrap">
     <h2>Time to Gulf (MVP)</h2>
 
     <div class="row">
-
       <div>
-        <label>Address</label><br/>
-        <div id="address-autofill"></div>
+        <label>Address</label>
+        <!-- This is the new, typeable address search input -->
+        <mapbox-search-box id="searchBox"></mapbox-search-box>
       </div>
 
       <div>
-        <label>Destination</label><br/>
+        <label>Destination</label>
         <select id="dest">
           <option value="river">Caloosahatchee River (Open Water)</option>
           <option value="matlacha">Matlacha Pass</option>
@@ -106,7 +67,7 @@
       </div>
 
       <div>
-        <label>Speed Mode</label><br/>
+        <label>Speed Mode</label>
         <select id="speed">
           <option value="conservative">Conservative</option>
           <option value="fast">Fast</option>
@@ -114,7 +75,6 @@
       </div>
 
       <button id="calc">Calculate</button>
-
     </div>
 
     <div class="results" id="results">
@@ -128,115 +88,108 @@
 
   <div id="map"></div>
 
-<script>
-  /* ===============================
-     MAPBOX TOKEN
-     =============================== */
-  mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
+  <script>
+    // 🔑 Your Mapbox token
+    const MAPBOX_TOKEN = "PASTE_YOUR_MAPBOX_TOKEN_HERE";
+    mapboxgl.accessToken = MAPBOX_TOKEN;
 
-  /* ===============================
-     DESTINATIONS
-     =============================== */
-  const destinations = {
-    river: {
-      name: "Caloosahatchee River",
-      lng: -81.9935,
-      lat: 26.6201
-    },
-    matlacha: {
-      name: "Matlacha Pass",
-      lng: -82.1168,
-      lat: 26.6352
-    }
-  };
-
-  const multipliers = {
-    conservative: 1.9,
-    fast: 1.4
-  };
-
-  /* ===============================
-     MAP
-     =============================== */
-  const map = new mapboxgl.Map({
-    container: "map",
-    style: "mapbox://styles/mapbox/streets-v12",
-    center: [-81.95, 26.63],
-    zoom: 10.8
-  });
-
-  let startMarker, endMarker;
-  let selectedStart = null;
-
-  /* ===============================
-     ADDRESS AUTOCOMPLETE
-     =============================== */
-  const autofill = new MapboxSearch.Autofill({
-    accessToken: mapboxgl.accessToken,
-    options: {
-      country: "US",
-      types: ["address"],
-      proximity: { lng: -81.95, lat: 26.63 }
-    }
-  });
-
-  autofill.mount("#address-autofill");
-
-  autofill.addEventListener("retrieve", (e) => {
-    const f = e.detail.features[0];
-    selectedStart = {
-      lng: f.geometry.coordinates[0],
-      lat: f.geometry.coordinates[1],
-      place: f.properties.full_address || f.place_name
+    // Destinations (you can expand this list later)
+    const destinations = {
+      river: { name: "Caloosahatchee River", lng: -81.9935, lat: 26.6201 },
+      matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 }
     };
-  });
 
-  /* ===============================
-     DISTANCE FUNCTION
-     =============================== */
-  function miles(a, b) {
-    const R = 3958.8;
-    const dLat = (b.lat - a.lat) * Math.PI / 180;
-    const dLng = (b.lng - a.lng) * Math.PI / 180;
-    const x =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(a.lat * Math.PI / 180) *
-      Math.cos(b.lat * Math.PI / 180) *
-      Math.sin(dLng / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(x));
-  }
+    // Simple “water path factor” to mimic canal travel (MVP only)
+    const multipliers = {
+      conservative: 1.9,
+      fast: 1.4
+    };
 
-  /* ===============================
-     CALCULATE
-     =============================== */
-  document.getElementById("calc").onclick = () => {
-    if (!selectedStart) {
-      results.innerText = "Please select an address from the suggestions.";
-      return;
+    // Map init
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [-81.95, 26.63],
+      zoom: 10.8
+    });
+
+    let startMarker, endMarker;
+    let selectedStart = null;
+
+    // Haversine miles
+    function miles(a, b) {
+      const R = 3958.8;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const x =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(a.lat * Math.PI / 180) *
+        Math.cos(b.lat * Math.PI / 180) *
+        Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(x));
     }
 
-    const end = destinations[dest.value];
-    const dist = miles(selectedStart, end) * multipliers[speed.value];
-    const mph = speed.value === "fast" ? 18 : 12;
-    const minutes = Math.round(dist / mph * 60);
+    // Wait for Search JS to load, then configure the search box and listen for selection
+    const searchScript = document.getElementById("search-js");
+    searchScript.onload = function () {
+      const searchBox = document.getElementById("searchBox");
 
-    results.innerHTML = `
-      <strong>${minutes} minutes</strong><br/>
-      ${dist.toFixed(1)} miles to ${end.name}
-    `;
+      // Connect token
+      searchBox.accessToken = MAPBOX_TOKEN;
 
-    if (startMarker) startMarker.remove();
-    if (endMarker) endMarker.remove();
+      // Bias results toward Cape Coral / SWFL
+      searchBox.proximity = "-81.95,26.63";
 
-    startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
-    endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
+      // Limit to addresses (keeps it clean)
+      searchBox.options = {
+        country: "US",
+        types: "address"
+      };
 
-    map.fitBounds(
-      [[selectedStart.lng, selectedStart.lat], [end.lng, end.lat]],
-      { padding: 60 }
-    );
-  };
-</script>
+      // When user selects an item, we get a GeoJSON feature with coordinates
+      searchBox.addEventListener("retrieve", (e) => {
+        const feature = e.detail; // GeoJSON feature
+        const coords = feature?.geometry?.coordinates;
+        if (!coords) return;
 
+        selectedStart = {
+          lng: coords[0],
+          lat: coords[1],
+          place: feature.properties?.name || feature.properties?.full_address || "Selected address"
+        };
+      });
+    };
+
+    // Calculate button
+    document.getElementById("calc").onclick = () => {
+      const results = document.getElementById("results");
+
+      if (!selectedStart) {
+        results.innerText = "Please select an address from the suggestions first.";
+        return;
+      }
+
+      const destKey = document.getElementById("dest").value;
+      const speedKey = document.getElementById("speed").value;
+
+      const end = destinations[destKey];
+      const dist = miles(selectedStart, end) * multipliers[speedKey];
+      const mph = speedKey === "fast" ? 18 : 12;
+      const minutes = Math.round(dist / mph * 60);
+
+      results.innerHTML = `
+        <div><strong>${minutes} minutes</strong></div>
+        <div>${dist.toFixed(1)} miles to ${end.name}</div>
+      `;
+
+      if (startMarker) startMarker.remove();
+      if (endMarker) endMarker.remove();
+
+      startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
+      endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
+
+      map.fitBounds([[selectedStart.lng, selectedStart.lat], [end.lng, end.lat]], { padding: 60 });
+    };
+  </script>
 </body>
 </html>
