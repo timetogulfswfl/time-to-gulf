@@ -5,7 +5,7 @@
   <title>Time to Gulf (MVP)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Mapbox core -->
+  <!-- Mapbox Core -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet"/>
 
@@ -14,45 +14,87 @@
   <link rel="stylesheet" href="https://api.mapbox.com/search-js/v1.0.0-beta.26/web.css">
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; }
-    .wrap { padding: 16px; max-width: 1100px; margin: auto; }
-    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-    label { font-size: 12px; opacity: 0.8; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    .wrap {
+      padding: 16px;
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
     select, button {
       padding: 10px;
       font-size: 14px;
       width: 220px;
+      height: 42px;
     }
+
     button {
       cursor: pointer;
       background: #0b5ed7;
       color: white;
       border: none;
-      height: 42px;
     }
-    #map { height: 520px; border-top: 1px solid #ddd; margin-top: 10px; }
+
+    #address-autofill {
+      width: 320px;
+    }
+
+    /* 🔑 THIS FIXES THE "CAN'T TYPE" PROBLEM */
+    #address-autofill input {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      height: 42px;
+      box-sizing: border-box;
+    }
+
+    #map {
+      height: 520px;
+      border-top: 1px solid #ddd;
+      margin-top: 12px;
+    }
+
     .results {
       margin-top: 12px;
       padding: 12px;
       background: #f7f7f7;
       border: 1px solid #e5e5e5;
     }
-    .small { font-size: 12px; opacity: 0.75; margin-top: 10px; }
-    #address-autofill {
-      width: 300px;
+
+    .small {
+      font-size: 12px;
+      opacity: 0.75;
+      margin-top: 8px;
     }
   </style>
 </head>
 
 <body>
+
   <div class="wrap">
     <h2>Time to Gulf (MVP)</h2>
 
     <div class="row">
+
       <div>
         <label>Address</label><br/>
         <div id="address-autofill"></div>
-        <input id="address" type="hidden">
       </div>
 
       <div>
@@ -72,6 +114,7 @@
       </div>
 
       <button id="calc">Calculate</button>
+
     </div>
 
     <div class="results" id="results">
@@ -86,13 +129,25 @@
   <div id="map"></div>
 
 <script>
-  // 🔑 MAPBOX TOKEN (keep yours here)
+  /* ===============================
+     MAPBOX TOKEN
+     =============================== */
   mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
 
-  // Destinations
+  /* ===============================
+     DESTINATIONS
+     =============================== */
   const destinations = {
-    river: { name: "Caloosahatchee River", lng: -81.9935, lat: 26.6201 },
-    matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 }
+    river: {
+      name: "Caloosahatchee River",
+      lng: -81.9935,
+      lat: 26.6201
+    },
+    matlacha: {
+      name: "Matlacha Pass",
+      lng: -82.1168,
+      lat: 26.6352
+    }
   };
 
   const multipliers = {
@@ -100,7 +155,9 @@
     fast: 1.4
   };
 
-  // Map
+  /* ===============================
+     MAP
+     =============================== */
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
@@ -111,11 +168,14 @@
   let startMarker, endMarker;
   let selectedStart = null;
 
-  // Address Autocomplete
+  /* ===============================
+     ADDRESS AUTOCOMPLETE
+     =============================== */
   const autofill = new MapboxSearch.Autofill({
     accessToken: mapboxgl.accessToken,
     options: {
       country: "US",
+      types: ["address"],
       proximity: { lng: -81.95, lat: 26.63 }
     }
   });
@@ -129,22 +189,26 @@
       lat: f.geometry.coordinates[1],
       place: f.properties.full_address || f.place_name
     };
-    document.getElementById("address").value = selectedStart.place;
   });
 
-  // Distance helper
+  /* ===============================
+     DISTANCE FUNCTION
+     =============================== */
   function miles(a, b) {
     const R = 3958.8;
     const dLat = (b.lat - a.lat) * Math.PI / 180;
     const dLng = (b.lng - a.lng) * Math.PI / 180;
     const x =
-      Math.sin(dLat/2)**2 +
-      Math.cos(a.lat*Math.PI/180) *
-      Math.cos(b.lat*Math.PI/180) *
-      Math.sin(dLng/2)**2;
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(a.lat * Math.PI / 180) *
+      Math.cos(b.lat * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(x));
   }
 
+  /* ===============================
+     CALCULATE
+     =============================== */
   document.getElementById("calc").onclick = () => {
     if (!selectedStart) {
       results.innerText = "Please select an address from the suggestions.";
@@ -173,5 +237,6 @@
     );
   };
 </script>
+
 </body>
 </html>
