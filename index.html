@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Time to Gulf</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet"/>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    .wrap { padding: 16px; max-width: 1100px; margin: auto; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    label { font-size: 12px; opacity: 0.8; }
+    input, select, button {
+      padding: 10px;
+      font-size: 14px;
+      width: 260px;
+    }
+    button {
+      width: 160px;
+      cursor: pointer;
+      background: #0b5ed7;
+      color: white;
+      border: none;
+    }
+    #map { height: 520px; border-top: 1px solid #ddd; }
+    .results {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+    }
+    .small { font-size: 12px; opacity: 0.75; margin-top: 10px; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h2>Time to Gulf (MVP)</h2>
+
+    <div class="row">
+      <div>
+        <label>Address</label><br/>
+        <input id="address" placeholder="1234 SE 10th St, Cape Coral, FL">
+      </div>
+
+      <div>
+        <label>Destination</label><br/>
+        <select id="dest">
+          <option value="river">Caloosahatchee River</option>
+          <option value="matlacha">Matlacha Pass</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Speed Mode</label><br/>
+        <select id="speed">
+          <option value="conservative">Conservative</option>
+          <option value="fast">Fast</option>
+        </select>
+      </div>
+
+      <button id="calc">Calculate</button>
+    </div>
+
+    <div class="results" id="results">
+      Enter an address and click Calculate.
+    </div>
+
+    <div class="small">
+      Disclaimer: Estimates only. Not for navigation.
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+<script>
+  // ⬇️ WE WILL FIX THIS TOKEN NEXT
+  mapboxgl.accessToken = "PASTE_MAPBOX_TOKEN_HERE";
+
+  const destinations = {
+    river: { name: "Caloosahatchee River", lng: -81.9935, lat: 26.6201 },
+    matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 }
+  };
+
+  const multipliers = {
+    conservative: 1.9,
+    fast: 1.4
+  };
+
+  const map = new mapboxgl.Map({
+    container: "map",
+    style: "mapbox://styles/mapbox/streets-v12",
+    center: [-81.95, 26.63],
+    zoom: 10.8
+  });
+
+  let startMarker, endMarker;
+
+  function miles(a, b) {
+    const R = 3958.8;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const x =
+      Math.sin(dLat/2)**2 +
+      Math.cos(a.lat*Math.PI/180) *
+      Math.cos(b.lat*Math.PI/180) *
+      Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+
+  async function geocode(addr) {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${mapboxgl.accessToken}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const [lng, lat] = data.features[0].center;
+    return { lng, lat, place: data.features[0].place_name };
+  }
+
+  document.getElementById("calc").onclick = async () => {
+    const addr = address.value.trim();
+    results.innerText = "Calculating...";
+
+    try {
+      const start = await geocode(addr);
+      const end = destinations[dest.value];
+
+      const d = miles(start, end) * multipliers[speed.value];
+      const mph = speed.value === "fast" ? 18 : 12;
+      const minutes = Math.round(d / mph * 60);
+
+      results.innerHTML = `
+        <strong>${minutes} minutes</strong><br/>
+        ${d.toFixed(1)} miles to ${end.name}
+      `;
+
+      if (startMarker) startMarker.remove();
+      if (endMarker) endMarker.remove();
+
+      startMarker = new mapboxgl.Marker().setLngLat([start.lng, start.lat]).addTo(map);
+      endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
+
+      map.fitBounds([[start.lng, start.lat], [end.lng, end.lat]], { padding: 60 });
+
+    } catch {
+      results.innerText = "Could not calculate. Try another address.";
+    }
+  };
+</script>
+</body>
+</html>
