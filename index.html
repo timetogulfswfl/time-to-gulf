@@ -7,438 +7,377 @@
 
   <!-- Mapbox GL JS -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet"/>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet" />
 
-  <!-- Mapbox Search JS Web Component -->
+  <!-- Mapbox Search Web Component -->
   <script defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; margin: 0; }
-    .wrap { padding: 16px; max-width: 1150px; margin: auto; }
-    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-    label { font-size: 12px; opacity: 0.8; display:block; margin-bottom: 6px; }
+    .wrap { padding: 16px; max-width: 1150px; margin: 0 auto; }
+    h1 { margin: 8px 0 16px; font-size: 34px; }
 
-    select, button {
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    label { font-size: 12px; opacity: 0.85; display: block; margin-bottom: 6px; }
+    .field { display: flex; flex-direction: column; }
+    select, input, button {
       padding: 10px;
       font-size: 14px;
       height: 42px;
       width: 260px;
       box-sizing: border-box;
+      border: 1px solid #cfcfcf;
+      border-radius: 6px;
+      background: white;
     }
-
     button {
       cursor: pointer;
+      border: none;
       background: #0b5ed7;
       color: white;
-      border: none;
       width: 180px;
     }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    mapbox-search-box {
-      width: 420px;
-      display: block;
-      height: 42px;
-    }
-
-    #map { height: 520px; border-top: 1px solid #ddd; margin-top: 12px; }
-
-    .results {
+    #results {
       margin-top: 12px;
+      border: 1px solid #e6e6e6;
+      border-radius: 8px;
       padding: 12px;
-      background: #f7f7f7;
-      border: 1px solid #e5e5e5;
+      min-height: 48px;
+      background: #fafafa;
+    }
+    .muted { font-size: 12px; opacity: 0.8; margin-top: 6px; }
+    .warn { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 8px; }
+
+    #map {
+      margin-top: 14px;
+      height: 520px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e6e6e6;
     }
 
-    .hint { font-size: 12px; margin-top: 6px; opacity: 0.85; }
-
-    .small {
-      font-size: 12px;
-      opacity: 0.75;
-      margin-top: 8px;
-      line-height: 1.35;
+    /* Make the search input look consistent */
+    mapbox-address-autofill input {
+      width: 420px !important;
+      max-width: 100%;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      background: #eee;
-      margin-left: 6px;
+    @media (max-width: 700px) {
+      mapbox-address-autofill input { width: 100% !important; }
+      select, input, button { width: 100%; }
+      button { width: 100%; }
     }
-
-    .warn {
-      padding: 10px;
-      border: 1px solid #f0c36d;
-      background: #fff7e6;
-      margin-top: 10px;
-      line-height: 1.35;
-    }
-
-    .bridge-box {
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      background: #fff;
-    }
-
-    .bridge-title {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    .bridge-list {
-      margin: 0;
-      padding-left: 18px;
-    }
-
-    .muted { opacity: 0.8; font-size: 12px; }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <h2>Time to Gulf (MVP)</h2>
+    <h1>Time to Gulf (MVP)</h1>
 
     <div class="row">
-      <div>
+      <div class="field" style="min-width: 420px;">
         <label>Address</label>
-        <mapbox-search-box id="searchBox"></mapbox-search-box>
-        <div class="hint" id="selectedHint">Selected: none</div>
+        <mapbox-address-autofill id="addrAutofill"></mapbox-address-autofill>
       </div>
 
-      <div>
+      <div class="field">
         <label>Destination</label>
-        <select id="dest">
-          <optgroup label="Open Water">
-            <option value="openWater">Nearest Open Water (closest exit)</option>
-            <option value="matlacha">Matlacha Pass</option>
-            <option value="riverCapeHarbour">Caloosahatchee River (Cape Harbour)</option>
-            <option value="riverYachtClub">Caloosahatchee River (Yacht Club)</option>
-            <option value="riverSE">Caloosahatchee River (SE Cape)</option>
-          </optgroup>
-
-          <optgroup label="Islands (Top)">
-            <option value="sanibelCauseway">Sanibel Island (Causeway)</option>
-            <option value="sanibelLighthouse">Sanibel Lighthouse</option>
-            <option value="captivaSouthSeas">Captiva Island (South Seas)</option>
-            <option value="cayoCosta">Cayo Costa</option>
-            <option value="useppa">Useppa Island</option>
-            <option value="bocaGrande">Boca Grande (Gasparilla)</option>
-            <option value="pineIsland">Pine Island (Bokeelia)</option>
-            <option value="loversKey">Lovers Key</option>
-            <option value="fmbTimesSquare">Fort Myers Beach (Times Square)</option>
-          </optgroup>
+        <select id="destination">
+          <option value="nearest_open_water">Nearest Open Water</option>
+          <option value="matlacha_pass">Matlacha Pass</option>
+          <option value="pine_island_sound">Pine Island Sound (near Matlacha)</option>
+          <option value="cape_harbour">Caloosahatchee River (Cape Harbour)</option>
+          <option value="yacht_club">Caloosahatchee River (Yacht Club)</option>
         </select>
       </div>
 
-      <div>
-        <label>Boat Height</label>
+      <div class="field">
+        <label>Speed Mode</label>
+        <select id="speedMode">
+          <option value="conservative">Conservative (12 mph)</option>
+          <option value="fast">Fast (18 mph)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Boat Height (ft)</label>
         <select id="boatHeight">
           <option value="9">9 ft</option>
           <option value="11">11 ft</option>
         </select>
       </div>
 
-      <div>
-        <label>Water Type (Cape Coral)</label>
-        <select id="waterType">
-          <option value="unknown" selected>Unknown (not verified)</option>
-          <option value="salt">Saltwater (Gulf Access)</option>
-          <option value="fresh">Freshwater (No direct Gulf access)</option>
-        </select>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="calcBtn" disabled>Calculate</button>
       </div>
-
-      <div>
-        <label>Speed Mode</label>
-        <select id="speed">
-          <option value="conservative">Conservative</option>
-          <option value="fast">Fast</option>
-        </select>
-      </div>
-
-      <button id="calc">Calculate</button>
     </div>
 
-    <div class="results" id="results">
+    <div id="results">
       Start typing an address and select it from the list.
+      <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
     </div>
 
-    <div class="small">
-      Notes: This MVP uses straight-line distance plus a multiplier. It does not follow canals yet. Bridge routing and clearances will appear once canal routing is enabled.
-    </div>
+    <div id="map"></div>
   </div>
 
-  <div id="map"></div>
-
   <script>
-    // =========================
+    // ===============================
     // CONFIG
-    // =========================
-    const MAPBOX_TOKEN = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-
-    // Destinations
-    const destinations = {
-      // Open Water exits: auto-pick nearest
-      openWater: {
-        name: "Nearest Open Water",
-        exits: [
-          { name: "Matlacha Pass Exit", lng: -82.1168, lat: 26.6352 },
-          { name: "River Exit (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
-          { name: "River Exit (Yacht Club)", lng: -81.9706, lat: 26.5450 },
-          { name: "River Exit (SE Cape)", lng: -81.9415, lat: 26.5480 },
-          { name: "Pine Island Sound (near Matlacha)", lng: -82.1065, lat: 26.6510 }
-        ]
-      },
-
-      // Specific open-water anchors
-      matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 },
-      riverCapeHarbour: { name: "Caloosahatchee River (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
-      riverYachtClub: { name: "Caloosahatchee River (Yacht Club)", lng: -81.9706, lat: 26.5450 },
-      riverSE: { name: "Caloosahatchee River (SE Cape)", lng: -81.9415, lat: 26.5480 },
-
-      // Islands (Top)
-      sanibelCauseway: { name: "Sanibel Island (Causeway)", lng: -82.0826, lat: 26.4807 },
-      sanibelLighthouse: { name: "Sanibel Lighthouse", lng: -82.0182, lat: 26.4524 },
-      captivaSouthSeas: { name: "Captiva Island (South Seas)", lng: -82.1930, lat: 26.5218 },
-      cayoCosta: { name: "Cayo Costa", lng: -82.2445, lat: 26.6676 },
-      useppa: { name: "Useppa Island", lng: -82.2256, lat: 26.6442 },
-      bocaGrande: { name: "Boca Grande (Gasparilla)", lng: -82.2622, lat: 26.7477 },
-      pineIsland: { name: "Pine Island (Bokeelia)", lng: -82.1586, lat: 26.7076 },
-      loversKey: { name: "Lovers Key", lng: -81.9515, lat: 26.3939 },
-      fmbTimesSquare: { name: "Fort Myers Beach (Times Square)", lng: -81.9488, lat: 26.4528 }
-    };
-
-    // MVP "water path factor" (fake canal distance)
-    const multipliers = { conservative: 1.9, fast: 1.4 };
-
-    // =========================
-    // MAP INIT
-    // =========================
-    const map = new mapboxgl.Map({
-      container: "map",
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [-81.95, 26.63],
-      zoom: 10.8
-    });
-
-    let mapReady = false;
-    map.on("load", () => { mapReady = true; });
-
-    let startMarker = null;
-    let endMarker = null;
-    let selectedStart = null;
+    // ===============================
+    mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
 
     const resultsEl = document.getElementById("results");
-    const selectedHintEl = document.getElementById("selectedHint");
+    const calcBtn = document.getElementById("calcBtn");
+    const destinationEl = document.getElementById("destination");
+    const speedModeEl = document.getElementById("speedMode");
+    const boatHeightEl = document.getElementById("boatHeight");
 
-    // =========================
+    let map;
+    let startMarker = null;
+    let endMarker = null;
+    let selectedStart = null; // {lat,lng,place_name}
+
+    // Loaded from /data/open_water_exits.json
+    let OPEN_WATER_EXITS = [];
+
+    // ===============================
     // HELPERS
-    // =========================
-    function extractCoordsFromRetrieveEvent(e) {
-      const d = e?.detail;
-
-      if (d?.geometry?.coordinates?.length === 2) {
-        return {
-          lng: d.geometry.coordinates[0],
-          lat: d.geometry.coordinates[1],
-          place: d.properties?.full_address || d.properties?.name || d.place_name || "Selected address"
-        };
-      }
-
-      const f = d?.features?.[0];
-      if (f?.geometry?.coordinates?.length === 2) {
-        return {
-          lng: f.geometry.coordinates[0],
-          lat: f.geometry.coordinates[1],
-          place: f.properties?.full_address || f.properties?.name || f.place_name || "Selected address"
-        };
-      }
-
-      return null;
-    }
-
-    function miles(a, b) {
+    // ===============================
+    function milesBetween(aLat, aLng, bLat, bLng) {
       const R = 3958.8;
-      const dLat = (b.lat - a.lat) * Math.PI / 180;
-      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const toRad = (d) => (d * Math.PI) / 180;
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
       const x =
         Math.sin(dLat / 2) ** 2 +
-        Math.cos(a.lat * Math.PI / 180) *
-        Math.cos(b.lat * Math.PI / 180) *
+        Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) *
         Math.sin(dLng / 2) ** 2;
       return 2 * R * Math.asin(Math.sqrt(x));
     }
 
-    function pickNearestExit(start, exits) {
-      let best = exits[0];
-      let bestDist = Infinity;
+    function clearRouteLine() {
+      if (!map) return;
+      if (map.getLayer("route-line")) map.removeLayer("route-line");
+      if (map.getSource("route-line")) map.removeSource("route-line");
+    }
 
-      for (const ex of exits) {
-        const d = miles(start, ex);
-        if (d < bestDist) {
-          bestDist = d;
-          best = ex;
+    function drawRouteLine(startLngLat, endLngLat) {
+      clearRouteLine();
+
+      const feature = {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [startLngLat, endLngLat]
         }
+      };
+
+      map.addSource("route-line", { type: "geojson", data: feature });
+      map.addLayer({
+        id: "route-line",
+        type: "line",
+        source: "route-line",
+        paint: {
+          "line-color": "#0b5ed7",
+          "line-width": 4
+        }
+      });
+    }
+
+    function fitToPoints(a, b) {
+      const minLng = Math.min(a[0], b[0]);
+      const minLat = Math.min(a[1], b[1]);
+      const maxLng = Math.max(a[0], b[0]);
+      const maxLat = Math.max(a[1], b[1]);
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 70 });
+    }
+
+    function pickNearestExit(startLat, startLng) {
+      if (!OPEN_WATER_EXITS.length) return null;
+      let best = null;
+      for (const ex of OPEN_WATER_EXITS) {
+        const d = milesBetween(startLat, startLng, ex.lat, ex.lng);
+        if (!best || d < best.miles) best = { exit: ex, miles: d };
       }
       return best;
     }
 
-    function drawRouteLine(start, end) {
-      if (!mapReady) return;
-
-      const id = "route-line";
-      const geo = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [start.lng, start.lat],
-            [end.lng, end.lat]
-          ]
-        }
-      };
-
-      if (map.getSource(id)) {
-        map.getSource(id).setData(geo);
-      } else {
-        map.addSource(id, { type: "geojson", data: geo });
-        map.addLayer({
-          id,
-          type: "line",
-          source: id,
-          paint: { "line-color": "#0b5ed7", "line-width": 4 }
-        });
-      }
+    function getExitById(id) {
+      return OPEN_WATER_EXITS.find(x => x.id === id) || null;
     }
 
-    // Placeholder bridge report for MVP
-    function renderBridgeReport(boatHeightFt, isCanalRoutingEnabled) {
-      if (!isCanalRoutingEnabled) {
-        return `
-          <div class="bridge-box">
-            <div class="bridge-title">Bridge Report <span class="badge">Coming soon</span></div>
-            <div class="muted">
-              Boat height selected: <strong>${boatHeightFt} ft</strong><br/>
-              Canal routing is not enabled yet, so bridge clearances are not evaluated.
-            </div>
+    async function loadOpenWaterExits() {
+      try {
+        const resp = await fetch("./data/open_water_exits.json", { cache: "no-store" });
+        if (!resp.ok) throw new Error("Could not load ./data/open_water_exits.json");
+        OPEN_WATER_EXITS = await resp.json();
+
+        // If you later expand exits in the JSON file, we can auto-populate the dropdown.
+        console.log("Loaded open water exits:", OPEN_WATER_EXITS);
+      } catch (e) {
+        console.error(e);
+        OPEN_WATER_EXITS = [];
+        resultsEl.innerHTML = `
+          <div class="warn">
+            <strong>Open water exits file not loaded.</strong><br/>
+            Make sure you have <code>data/open_water_exits.json</code> committed.
           </div>
+          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
         `;
       }
-
-      // Later, when routing exists, we will return real bridge list + warnings here.
-      return "";
     }
 
-    function waterTypeLabel(val) {
-      if (val === "salt") return "Saltwater (Gulf Access)";
-      if (val === "fresh") return "Freshwater (No direct Gulf access)";
-      return "Unknown (not verified)";
+    // ===============================
+    // INIT MAP
+    // ===============================
+    function initMap() {
+      map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [-81.95, 26.62], // Cape Coral area
+        zoom: 10
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
     }
 
-    // =========================
-    // SEARCH BOX INIT
-    // =========================
-    function initSearchBox() {
-      const searchBox = document.getElementById("searchBox");
-      if (!searchBox) return;
+    // ===============================
+    // INIT ADDRESS AUTOFILL
+    // ===============================
+    function initAutofill() {
+      const autofill = document.getElementById("addrAutofill");
 
-      searchBox.accessToken = MAPBOX_TOKEN;
-      searchBox.proximity = "-81.95,26.63";
-      searchBox.options = { country: "US", types: "address" };
+      // Create the internal input
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Start typing an address and select it from the list";
+      input.autocomplete = "off";
+      autofill.appendChild(input);
 
-      searchBox.addEventListener("retrieve", (e) => {
-        const start = extractCoordsFromRetrieveEvent(e);
-        if (!start) return;
+      // Configure autofill component
+      autofill.accessToken = mapboxgl.accessToken;
+      autofill.options = {
+        country: "US",
+        proximity: { longitude: -81.95, latitude: 26.62 } // Cape Coral
+      };
 
-        selectedStart = start;
-        selectedHintEl.textContent = "Selected: " + start.place;
-        resultsEl.textContent = "Pick destination, boat height, and water type, then click Calculate.";
+      // When user picks a suggestion, this event fires
+      autofill.addEventListener("retrieve", (ev) => {
+        const feature = ev.detail?.features?.[0];
+        if (!feature) return;
+
+        const [lng, lat] = feature.geometry.coordinates;
+        selectedStart = {
+          lat,
+          lng,
+          place_name: feature.properties?.full_address || feature.place_name || "Selected address"
+        };
+
+        calcBtn.disabled = false;
+
+        resultsEl.innerHTML = `
+          <div><strong>Selected:</strong> ${selectedStart.place_name}</div>
+          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+        `;
+
+        // Drop or move start marker
+        if (startMarker) startMarker.remove();
+        startMarker = new mapboxgl.Marker().setLngLat([lng, lat]).addTo(map);
+
+        // Zoom closer to selected point
+        map.flyTo({ center: [lng, lat], zoom: 12 });
+
+        // Clear any old route
+        if (endMarker) { endMarker.remove(); endMarker = null; }
+        clearRouteLine();
       });
     }
 
-    if (window.customElements && customElements.whenDefined) {
-      customElements.whenDefined("mapbox-search-box").then(() => initSearchBox());
-    } else {
-      window.addEventListener("DOMContentLoaded", initSearchBox);
+    // ===============================
+    // CALCULATE
+    // ===============================
+    function calculate() {
+      if (!selectedStart) {
+        resultsEl.innerHTML = `
+          <div class="warn"><strong>Please select an address from the suggestions first.</strong></div>
+          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+        `;
+        return;
+      }
+
+      if (!OPEN_WATER_EXITS.length) {
+        resultsEl.innerHTML = `
+          <div class="warn"><strong>Open water exits not loaded.</strong> Please confirm <code>data/open_water_exits.json</code> exists.</div>
+          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+        `;
+        return;
+      }
+
+      const destValue = destinationEl.value;
+      const speedMode = speedModeEl.value;
+      const boatHeight = Number(boatHeightEl.value);
+
+      // mph assumption
+      const mph = speedMode === "fast" ? 18 : 12;
+
+      let chosenExit = null;
+      let miles = 0;
+
+      if (destValue === "nearest_open_water") {
+        const nearest = pickNearestExit(selectedStart.lat, selectedStart.lng);
+        if (!nearest) {
+          resultsEl.innerHTML = `
+            <div class="warn"><strong>No exits found.</strong></div>
+            <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+          `;
+          return;
+        }
+        chosenExit = nearest.exit;
+        miles = nearest.miles;
+      } else {
+        chosenExit = getExitById(destValue);
+        if (!chosenExit) {
+          resultsEl.innerHTML = `
+            <div class="warn"><strong>Destination not found in exits file.</strong></div>
+            <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+          `;
+          return;
+        }
+        miles = milesBetween(selectedStart.lat, selectedStart.lng, chosenExit.lat, chosenExit.lng);
+      }
+
+      const minutes = Math.round((miles / mph) * 60);
+
+      // Update end marker
+      if (endMarker) endMarker.remove();
+      endMarker = new mapboxgl.Marker().setLngLat([chosenExit.lng, chosenExit.lat]).addTo(map);
+
+      // Draw route line (temporary straight line)
+      drawRouteLine([selectedStart.lng, selectedStart.lat], [chosenExit.lng, chosenExit.lat]);
+      fitToPoints([selectedStart.lng, selectedStart.lat], [chosenExit.lng, chosenExit.lat]);
+
+      resultsEl.innerHTML = `
+        <div><strong>${minutes} minutes</strong></div>
+        <div>${miles.toFixed(1)} miles to <strong>${chosenExit.name}</strong></div>
+        <div class="muted">Speed: ${mph} mph | Boat height: ${boatHeight} ft</div>
+        <div class="muted">Next step: replace straight line with canal routing and bridge clearance checks.</div>
+        <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+      `;
     }
 
-    // =========================
-    // CALCULATE
-    // =========================
-    document.getElementById("calc").onclick = () => {
-      if (!selectedStart) {
-        resultsEl.innerText = "Please select an address from the suggestions first.";
-        return;
-      }
+    // ===============================
+    // BOOT
+    // ===============================
+    window.addEventListener("DOMContentLoaded", async () => {
+      initMap();
+      await loadOpenWaterExits();
+      initAutofill();
 
-      const waterType = document.getElementById("waterType").value;
-      const boatHeightFt = Number(document.getElementById("boatHeight").value);
-      const speedKey = document.getElementById("speed").value;
-      const destKey = document.getElementById("dest").value;
-
-      // Rule A: Freshwater is a hard stop
-      if (waterType === "fresh") {
-        resultsEl.innerHTML = `
-          <div class="warn">
-            <strong>No direct Gulf access</strong><br/>
-            Water type is set to <strong>${waterTypeLabel(waterType)}</strong>.<br/>
-            This tool will not estimate a boating route to open water for freshwater canals.
-          </div>
-          ${renderBridgeReport(boatHeightFt, false)}
-        `;
-
-        // Remove old markers and line if they exist
-        if (startMarker) startMarker.remove();
-        if (endMarker) endMarker.remove();
-        startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
-        endMarker = null;
-
-        // Clear route line if present
-        const id = "route-line";
-        if (mapReady && map.getLayer(id)) map.removeLayer(id);
-        if (mapReady && map.getSource(id)) map.removeSource(id);
-
-        map.flyTo({ center: [selectedStart.lng, selectedStart.lat], zoom: 12 });
-        return;
-      }
-
-      // Destination selection
-      let end;
-      if (destKey === "openWater") {
-        end = pickNearestExit(selectedStart, destinations.openWater.exits);
-      } else {
-        end = destinations[destKey];
-      }
-
-      const dist = miles(selectedStart, end) * multipliers[speedKey];
-      const mph = speedKey === "fast" ? 18 : 12;
-      const minutes = Math.round((dist / mph) * 60);
-
-      // MVP result
-      resultsEl.innerHTML = `
-        <div><strong>${minutes} minutes</strong> to <strong>${end.name}</strong></div>
-        <div>${dist.toFixed(1)} miles (estimate)</div>
-        <div class="muted">Water type: <strong>${waterTypeLabel(waterType)}</strong> • Boat height: <strong>${boatHeightFt} ft</strong></div>
-        ${renderBridgeReport(boatHeightFt, false)}
-      `;
-
-      // Markers
-      if (startMarker) startMarker.remove();
-      if (endMarker) endMarker.remove();
-
-      startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
-      endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
-
-      // Route line (straight line MVP)
-      drawRouteLine(selectedStart, end);
-
-      map.fitBounds(
-        [[selectedStart.lng, selectedStart.lat], [end.lng, end.lat]],
-        { padding: 60 }
-      );
-    };
+      calcBtn.addEventListener("click", calculate);
+    });
   </script>
 </body>
 </html>
