@@ -22,7 +22,7 @@
       padding: 10px;
       font-size: 14px;
       height: 42px;
-      width: 260px;
+      width: 290px;
       box-sizing: border-box;
     }
 
@@ -61,11 +61,25 @@
       <div>
         <label>Destination</label>
         <select id="dest">
-          <option value="openWater">Nearest Open Water (closest exit)</option>
-          <option value="matlacha">Matlacha Pass</option>
-          <option value="riverCapeHarbour">Caloosahatchee River (Cape Harbour)</option>
-          <option value="riverYachtClub">Caloosahatchee River (Yacht Club)</option>
-          <option value="riverSE">Caloosahatchee River (SE Cape)</option>
+          <optgroup label="Open Water">
+            <option value="openWater">Nearest Open Water (closest exit)</option>
+            <option value="matlacha">Matlacha Pass</option>
+            <option value="riverCapeHarbour">Caloosahatchee River (Cape Harbour)</option>
+            <option value="riverYachtClub">Caloosahatchee River (Yacht Club)</option>
+            <option value="riverSE">Caloosahatchee River (SE Cape)</option>
+          </optgroup>
+
+          <optgroup label="Islands">
+            <option value="sanibelCauseway">Sanibel Island (Causeway)</option>
+            <option value="sanibelLighthouse">Sanibel Lighthouse</option>
+            <option value="captivaSouthSeas">Captiva Island (South Seas)</option>
+            <option value="cayoCosta">Cayo Costa</option>
+            <option value="useppa">Useppa Island</option>
+            <option value="bocaGrande">Boca Grande (Gasparilla)</option>
+            <option value="pineIsland">Pine Island (Bokeelia)</option>
+            <option value="loversKey">Lovers Key</option>
+            <option value="fmbTimesSquare">Fort Myers Beach (Times Square)</option>
+          </optgroup>
         </select>
       </div>
 
@@ -85,7 +99,7 @@
     </div>
 
     <div class="small">
-      Disclaimer: Estimates only. Not for navigation. Open Water is an auto-selected closest exit point and does not yet follow canals.
+      Disclaimer: Estimates only. Not for navigation. Open Water uses the closest exit anchor and does not yet follow canals.
     </div>
   </div>
 
@@ -98,36 +112,42 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // Destinations
-    // Note: coordinates are "exit/POI anchors" for MVP. Canal routing comes later.
+    // =========================
+    // DESTINATIONS
+    // =========================
     const destinations = {
-      // Open Water is a set of exits. We auto-pick nearest.
+      // Open Water exits (auto-pick nearest)
       openWater: {
         name: "Nearest Open Water",
         exits: [
           { name: "Matlacha Pass Exit", lng: -82.1168, lat: 26.6352 },
-
-          // Caloosahatchee River exits (several anchors)
           { name: "River Exit (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
           { name: "River Exit (Yacht Club)", lng: -81.9706, lat: 26.5450 },
           { name: "River Exit (SE Cape)", lng: -81.9415, lat: 26.5480 },
-
-          // Optional additional “open water feeling” anchors
           { name: "Pine Island Sound (near Matlacha)", lng: -82.1065, lat: 26.6510 }
         ]
       },
 
+      // Specific open-water anchors
       matlacha: { name: "Matlacha Pass", lng: -82.1168, lat: 26.6352 },
       riverCapeHarbour: { name: "Caloosahatchee River (Cape Harbour)", lng: -82.0096, lat: 26.5406 },
       riverYachtClub: { name: "Caloosahatchee River (Yacht Club)", lng: -81.9706, lat: 26.5450 },
-      riverSE: { name: "Caloosahatchee River (SE Cape)", lng: -81.9415, lat: 26.5480 }
+      riverSE: { name: "Caloosahatchee River (SE Cape)", lng: -81.9415, lat: 26.5480 },
+
+      // Islands (anchor points)
+      sanibelCauseway: { name: "Sanibel Island (Causeway)", lng: -82.0826, lat: 26.4807 },
+      sanibelLighthouse: { name: "Sanibel Lighthouse", lng: -82.0182, lat: 26.4524 },
+      captivaSouthSeas: { name: "Captiva Island (South Seas)", lng: -82.1930, lat: 26.5218 },
+      cayoCosta: { name: "Cayo Costa", lng: -82.2445, lat: 26.6676 },
+      useppa: { name: "Useppa Island", lng: -82.2256, lat: 26.6442 },
+      bocaGrande: { name: "Boca Grande (Gasparilla)", lng: -82.2622, lat: 26.7477 },
+      pineIsland: { name: "Pine Island (Bokeelia)", lng: -82.1586, lat: 26.7076 },
+      loversKey: { name: "Lovers Key", lng: -81.9515, lat: 26.3939 },
+      fmbTimesSquare: { name: "Fort Myers Beach (Times Square)", lng: -81.9488, lat: 26.4528 }
     };
 
-    // MVP "water path factor"
-    const multipliers = {
-      conservative: 1.9,
-      fast: 1.4
-    };
+    // MVP "water path factor" (fake canal distance)
+    const multipliers = { conservative: 1.9, fast: 1.4 };
 
     // =========================
     // MAP INIT
@@ -155,7 +175,6 @@
     function extractCoordsFromRetrieveEvent(e) {
       const d = e?.detail;
 
-      // Sometimes detail is a feature directly
       if (d?.geometry?.coordinates?.length === 2) {
         return {
           lng: d.geometry.coordinates[0],
@@ -164,7 +183,6 @@
         };
       }
 
-      // Sometimes detail contains a features array
       const f = d?.features?.[0];
       if (f?.geometry?.coordinates?.length === 2) {
         return {
@@ -248,7 +266,7 @@
 
         selectedStart = start;
         selectedHintEl.textContent = "Selected: " + start.place;
-        resultsEl.textContent = "Now click Calculate.";
+        resultsEl.textContent = "Now pick a destination and click Calculate.";
       });
     }
 
