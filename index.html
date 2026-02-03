@@ -5,284 +5,428 @@
   <title>Time to Gulf (MVP)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Mapbox GL -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+  <!-- Mapbox GL JS -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
 
-  <!-- Mapbox Geocoder (reliable address autocomplete dropdown) -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.min.js"></script>
-  <link
-    rel="stylesheet"
-    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.css"
-    type="text/css"
-  />
+  <!-- Mapbox Search JS Web Component -->
+  <script defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; }
-    .wrap { padding: 16px; max-width: 1200px; margin: auto; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #fff; }
+    .wrap { max-width: 1150px; margin: 0 auto; padding: 18px; }
+    h1 { margin: 0 0 14px 0; font-size: 32px; }
+
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-    label { font-size: 12px; opacity: 0.85; display: block; margin-bottom: 6px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; opacity: .8; }
+
+    mapbox-search-box {
+      width: 420px;
+      display: block;
+      --mbx-search-box-height: 42px;
+      --mbx-search-box-border-radius: 6px;
+    }
 
     select, button {
-      padding: 10px;
-      font-size: 14px;
       height: 42px;
-      width: 260px;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #cfcfcf;
       box-sizing: border-box;
     }
 
-    .geocoderBox {
-      width: 360px;
-      min-width: 320px;
+    select { width: 260px; background: #fff; }
+
+    button {
+      min-width: 170px;
+      border: none;
+      background: #0b5ed7;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
     }
 
-    button { background: #0b5ed7; color: white; border: none; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
 
-    #map { height: 540px; margin-top: 12px; }
-    .result { margin-top: 12px; padding: 12px; border: 1px solid #ddd; min-height: 56px; }
-    .status { margin-top: 8px; font-size: 12px; opacity: 0.85; }
-    .error { color: #b00020; font-weight: 600; }
+    #selectedAddress { font-size: 12px; opacity: .85; margin-top: 6px; }
+    #resultBox {
+      margin-top: 14px;
+      border: 1px solid #e3e3e3;
+      background: #fafafa;
+      padding: 12px;
+      min-height: 56px;
+      border-radius: 8px;
+    }
+    #resultTitle { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+    #resultSub { font-size: 14px; opacity: .9; }
+
+    .note { font-size: 12px; opacity: .8; margin-top: 10px; }
+
+    #map {
+      margin-top: 14px;
+      width: 100%;
+      height: 520px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e6e6e6;
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eee;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
   </style>
+
+  <script>
+    // Your Mapbox token (you asked to bake it in)
+    const MAPBOX_TOKEN = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+  </script>
 </head>
 
 <body>
   <div class="wrap">
-    <h2>Time to Gulf (MVP)</h2>
+    <h1>Time to Gulf (MVP)</h1>
 
     <div class="row">
-      <div class="geocoderBox">
+      <div class="field" style="flex: 1 1 420px;">
         <label>Address</label>
-        <div id="geocoder"></div>
-        <div class="status" id="selectedLine">Select an address from the dropdown.</div>
+
+        <!-- Autocomplete search box -->
+        <mapbox-search-box
+          id="addressSearch"
+          access-token="pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ"
+          placeholder="Start typing an address..."
+          options='{"country":"US","bbox":[-82.40,26.45,-81.70,26.90]}'>
+        </mapbox-search-box>
+
+        <div id="selectedAddress">Start typing an address and select it from the list.</div>
       </div>
 
-      <div>
+      <div class="field">
         <label>Destination</label>
-        <select id="destination">
-          <option value="nearest">Nearest Open Water (closest exit)</option>
+        <select id="destinationSelect">
+          <option value="nearest_open_water" selected>Nearest Open Water (closest exit)</option>
+          <!-- We will add islands/POIs next, but keep MVP stable first -->
+          <option value="matlacha_pass">Matlacha Pass</option>
+          <option value="pine_island_sound">Pine Island Sound</option>
+          <option value="cape_harbour">Caloosahatchee River - Cape Harbour</option>
+          <option value="yacht_club">Caloosahatchee River - Cape Coral Yacht Club</option>
         </select>
       </div>
 
-      <div>
+      <div class="field">
         <label>Boat Height</label>
         <select id="boatHeight">
-          <option value="9">9 ft</option>
+          <option value="9" selected>9 ft</option>
           <option value="11">11 ft</option>
         </select>
       </div>
 
-      <div>
+      <div class="field">
         <label>Speed Mode</label>
-        <select id="speed">
-          <option value="conservative">Conservative</option>
-          <option value="normal">Normal</option>
+        <select id="speedMode">
+          <option value="conservative" selected>Conservative</option>
+          <option value="fast">Fast</option>
         </select>
       </div>
 
-      <button id="calcBtn" disabled>Loading data...</button>
+      <button id="calcBtn" disabled>Calculate</button>
     </div>
 
-    <div class="result" id="result"></div>
-    <div class="status" id="loadStatus"></div>
+    <div id="resultBox">
+      <div id="resultTitle">Waiting for an address selection...</div>
+      <div id="resultSub">Disclaimer: Estimates only. Not for navigation.</div>
+      <div class="note">
+        Bridge Report <span class="pill">Coming soon</span><br/>
+        Canal routing and bridge clearances will appear after we build real canal routing logic.
+      </div>
+    </div>
+
+    <div class="note">
+      Notes: This MVP draws a straight line and estimates time. It does not follow canals yet.
+    </div>
+
+    <div id="map"></div>
   </div>
 
-  <div id="map"></div>
+  <script>
+    // ----------------------------
+    // State
+    // ----------------------------
+    let selectedAddressCoords = null; // [lng, lat]
+    let selectedAddressName = "";
+    let openWaterExits = [];
+    let canalsLoaded = false;
+    let canalGeoJSON = null;
 
-<script>
-  // Your token
-  mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
+    // ----------------------------
+    // Map init
+    // ----------------------------
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [-81.95, 26.63],
+      zoom: 10.2
+    });
 
-  const map = new mapboxgl.Map({
-    container: "map",
-    style: "mapbox://styles/mapbox/streets-v12",
-    center: [-81.95, 26.65],
-    zoom: 11
-  });
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-  const loadStatusEl = document.getElementById("loadStatus");
-  const resultEl = document.getElementById("result");
-  const selectedLineEl = document.getElementById("selectedLine");
-  const calcBtn = document.getElementById("calcBtn");
+    // Markers
+    let startMarker = null;
+    let endMarker = null;
 
-  let canalsLoaded = false;
-  let exitsLoaded = false;
-  let exits = [];
-  let selectedCoords = null;
-  let selectedPlaceName = "";
-
-  let startMarker = null;
-  let endMarker = null;
-
-  // Reliable address autocomplete dropdown
-  const geocoder = new MapboxGeocoder({
-    accessToken: mapboxgl.accessToken,
-    mapboxgl: mapboxgl,
-    marker: false,
-    placeholder: "Start typing an address...",
-    countries: "us",
-    proximity: { longitude: -81.95, latitude: 26.65 }
-  });
-
-  document.getElementById("geocoder").appendChild(geocoder.onAdd(map));
-
-  geocoder.on("result", (e) => {
-    selectedCoords = e.result.geometry.coordinates;
-    selectedPlaceName = e.result.place_name;
-    selectedLineEl.textContent = "Selected: " + selectedPlaceName;
-  });
-
-  geocoder.on("clear", () => {
-    selectedCoords = null;
-    selectedPlaceName = "";
-    selectedLineEl.textContent = "Select an address from the dropdown.";
-  });
-
-  function updateButtonState() {
-    if (canalsLoaded && exitsLoaded) {
-      calcBtn.disabled = false;
-      calcBtn.textContent = "Calculate";
-      loadStatusEl.textContent = "Ready.";
-    } else {
-      calcBtn.disabled = true;
-      calcBtn.textContent = "Loading data...";
-    }
-  }
-
-  async function safeFetchJson(path) {
-    const r = await fetch(path, { cache: "no-store" });
-    if (!r.ok) throw new Error(path + " failed (" + r.status + ")");
-    return await r.json();
-  }
-
-  map.on("load", async () => {
-    loadStatusEl.textContent = "Loading canals and exits...";
-
-    // 1) Load canals
-    try {
-      // IMPORTANT: this file must exist at /data/cape_coral_canals.geojson
-      const canals = await safeFetchJson("data/cape_coral_canals.geojson");
-
-      map.addSource("canals", { type: "geojson", data: canals });
-      map.addLayer({
-        id: "canals",
-        type: "line",
-        source: "canals",
-        paint: { "line-color": "#4fa3ff", "line-width": 2 }
+    // Add a route line source/layer when map is ready
+    map.on("load", () => {
+      map.addSource("routeLine", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: []
+        }
       });
 
+      map.addLayer({
+        id: "routeLineLayer",
+        type: "line",
+        source: "routeLine",
+        paint: {
+          "line-width": 4,
+          "line-color": "#0b5ed7"
+        }
+      });
+    });
+
+    // ----------------------------
+    // Load data files
+    // ----------------------------
+    async function loadOpenWaterExits() {
+      const res = await fetch("./data/open_water_exits.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to load open_water_exits.json");
+      openWaterExits = await res.json();
+    }
+
+    async function loadCanals() {
+      // IMPORTANT: your file must be named exactly: data/cape_coral_canals.geojson
+      const res = await fetch("./data/cape_coral_canals.geojson", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to load cape_coral_canals.geojson");
+      canalGeoJSON = await res.json();
       canalsLoaded = true;
-    } catch (err) {
-      canalsLoaded = false;
-      loadStatusEl.innerHTML =
-        '<span class="error">Canals failed to load.</span> ' +
-        'Check that your file exists at <b>data/cape_coral_canals.geojson</b>. ' +
-        'Error: ' + err.message;
-      resultEl.innerHTML =
-        '<span class="error">Fix needed:</span> Your canals file is not loading. ' +
-        'Go to GitHub → data folder and confirm the filename matches exactly.';
+      console.log("✅ Canals loaded:", canalGeoJSON.features ? canalGeoJSON.features.length : "unknown");
     }
 
-    // 2) Load open water exits
-    try {
-      exits = await safeFetchJson("data/open_water_exits.json");
-      exitsLoaded = true;
-    } catch (err) {
-      exitsLoaded = false;
-      loadStatusEl.innerHTML =
-        '<span class="error">Open water exits failed to load.</span> ' +
-        'Check that <b>data/open_water_exits.json</b> exists. Error: ' + err.message;
-    }
-
-    updateButtonState();
-  });
-
-  calcBtn.addEventListener("click", calculate);
-
-  function milesBetween(a, b) {
-    const dx = a[0] - b[0];
-    const dy = a[1] - b[1];
-    return Math.hypot(dx, dy) * 69; // rough miles conversion for MVP
-  }
-
-  function drawRoute(start, end) {
-    // remove old route
-    if (map.getSource("route")) {
-      map.removeLayer("route");
-      map.removeSource("route");
-    }
-
-    // remove old markers
-    if (startMarker) startMarker.remove();
-    if (endMarker) endMarker.remove();
-
-    // route line (MVP: straight line for now)
-    map.addSource("route", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: [start, end] }
+    // Kick off loads immediately
+    (async () => {
+      try {
+        await loadOpenWaterExits();
+        await loadCanals();
+      } catch (err) {
+        console.error("❌ Data load error:", err);
+        // We do not block the MVP if canals fail, but we show you why
       }
+    })();
+
+    // ----------------------------
+    // Address search wiring
+    // ----------------------------
+    const searchBox = document.getElementById("addressSearch");
+    const calcBtn = document.getElementById("calcBtn");
+    const selectedAddressEl = document.getElementById("selectedAddress");
+
+    // Fires ONLY when user clicks a dropdown suggestion
+    searchBox.addEventListener("retrieve", (e) => {
+      const feature = e.detail.features && e.detail.features[0];
+      if (!feature) return;
+
+      selectedAddressCoords = feature.geometry.coordinates; // [lng, lat]
+      selectedAddressName = feature.place_name;
+
+      selectedAddressEl.innerText = "Selected: " + selectedAddressName;
+
+      calcBtn.disabled = false;
+
+      // Put start marker immediately
+      setStartMarker(selectedAddressCoords);
+      map.flyTo({ center: selectedAddressCoords, zoom: 13 });
     });
 
-    map.addLayer({
-      id: "route",
-      type: "line",
-      source: "route",
-      paint: { "line-color": "#003cff", "line-width": 4 }
+    // If user clears, disable calculate
+    searchBox.addEventListener("clear", () => {
+      selectedAddressCoords = null;
+      selectedAddressName = "";
+      selectedAddressEl.innerText = "Start typing an address and select it from the list.";
+      calcBtn.disabled = true;
+      clearRouteAndMarkers();
+      updateResult("Waiting for an address selection...", "Disclaimer: Estimates only. Not for navigation.");
     });
 
-    startMarker = new mapboxgl.Marker({ color: "#0b5ed7" }).setLngLat(start).addTo(map);
-    endMarker = new mapboxgl.Marker({ color: "#0b5ed7" }).setLngLat(end).addTo(map);
+    // ----------------------------
+    // Helpers: distance, time, formatting
+    // ----------------------------
+    function toRadians(deg) { return deg * Math.PI / 180; }
 
-    const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend(start);
-    bounds.extend(end);
-    map.fitBounds(bounds, { padding: 60, maxZoom: 14 });
-  }
+    // Haversine distance in miles
+    function haversineMiles(a, b) {
+      const [lng1, lat1] = a;
+      const [lng2, lat2] = b;
 
-  async function calculate() {
-    if (!canalsLoaded) {
-      alert("Canals not loaded yet.");
-      return;
-    }
-    if (!selectedCoords) {
-      alert("Please select an address from the dropdown first.");
-      return;
-    }
-    if (!exitsLoaded || !exits.length) {
-      alert("Open water exits not loaded yet.");
-      return;
+      const R = 3958.7613; // Earth radius miles
+      const dLat = toRadians(lat2 - lat1);
+      const dLng = toRadians(lng2 - lng1);
+
+      const s1 = Math.sin(dLat / 2);
+      const s2 = Math.sin(dLng / 2);
+      const q = s1 * s1 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * s2 * s2;
+      const c = 2 * Math.atan2(Math.sqrt(q), Math.sqrt(1 - q));
+      return R * c;
     }
 
-    const start = selectedCoords;
+    function minutesFromMiles(miles, speedMode) {
+      // Straight line MVP multiplier to approximate canal travel
+      // Conservative is slower, fast is faster.
+      const multiplier = speedMode === "fast" ? 1.7 : 2.2;
 
-    // Find nearest exit (MVP)
-    let closest = exits[0];
-    let bestMiles = Infinity;
+      // Approx mph equivalent after multiplier
+      const mph = speedMode === "fast" ? 18 : 14;
 
-    for (const e of exits) {
-      const end = [e.lng, e.lat];
-      const m = milesBetween(start, end);
-      if (m < bestMiles) { bestMiles = m; closest = e; }
+      const adjustedMiles = miles * multiplier;
+      const hours = adjustedMiles / mph;
+      return Math.round(hours * 60);
     }
 
-    const end = [closest.lng, closest.lat];
-    drawRoute(start, end);
+    function pickNearestOpenWater(fromCoords) {
+      if (!openWaterExits || openWaterExits.length === 0) return null;
 
-    const speedMode = document.getElementById("speed").value;
-    const speedMph = speedMode === "conservative" ? 8 : 12;
-    const minutes = Math.round((bestMiles / speedMph) * 60);
+      let best = null;
+      let bestMiles = Infinity;
 
-    const boatHeight = document.getElementById("boatHeight").value;
+      for (const ex of openWaterExits) {
+        const m = haversineMiles(fromCoords, [ex.lng, ex.lat]);
+        if (m < bestMiles) {
+          bestMiles = m;
+          best = { ...ex, miles: m };
+        }
+      }
+      return best;
+    }
 
-    resultEl.innerHTML = `
-      <strong>${minutes} minutes to ${closest.name}</strong><br>
-      ${bestMiles.toFixed(1)} miles (estimate)<br>
-      Boat height: ${boatHeight} ft<br>
-      <div class="status">Next step: make the route follow canals, then apply bridge clearance rules.</div>
-    `;
-  }
-</script>
+    function getExitById(id) {
+      return openWaterExits.find(x => x.id === id) || null;
+    }
+
+    // ----------------------------
+    // Map drawing
+    // ----------------------------
+    function setStartMarker(coords) {
+      if (startMarker) startMarker.remove();
+      startMarker = new mapboxgl.Marker({ color: "#0b5ed7" })
+        .setLngLat(coords)
+        .addTo(map);
+    }
+
+    function setEndMarker(coords) {
+      if (endMarker) endMarker.remove();
+      endMarker = new mapboxgl.Marker({ color: "#0b5ed7" })
+        .setLngLat(coords)
+        .addTo(map);
+    }
+
+    function drawLine(a, b) {
+      const fc = {
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [a, b]
+          },
+          properties: {}
+        }]
+      };
+
+      const src = map.getSource("routeLine");
+      if (src) src.setData(fc);
+    }
+
+    function clearRouteAndMarkers() {
+      if (startMarker) { startMarker.remove(); startMarker = null; }
+      if (endMarker) { endMarker.remove(); endMarker = null; }
+      const src = map.getSource("routeLine");
+      if (src) src.setData({ type: "FeatureCollection", features: [] });
+    }
+
+    function fitTo(a, b) {
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend(a);
+      bounds.extend(b);
+      map.fitBounds(bounds, { padding: 90, maxZoom: 14 });
+    }
+
+    // ----------------------------
+    // UI result
+    // ----------------------------
+    function updateResult(title, sub) {
+      document.getElementById("resultTitle").innerText = title;
+      document.getElementById("resultSub").innerText = sub;
+    }
+
+    // ----------------------------
+    // Calculate click
+    // ----------------------------
+    calcBtn.addEventListener("click", () => {
+      if (!selectedAddressCoords) {
+        updateResult("Please select an address from the suggestions first.", "Start typing and click a dropdown result.");
+        return;
+      }
+
+      // If canals not loaded, warn but still run MVP
+      if (!canalsLoaded) {
+        alert("Canals not loaded yet.");
+      }
+
+      const destMode = document.getElementById("destinationSelect").value;
+      const speedMode = document.getElementById("speedMode").value;
+      const boatHeight = document.getElementById("boatHeight").value;
+
+      let dest = null;
+
+      if (destMode === "nearest_open_water") {
+        dest = pickNearestOpenWater(selectedAddressCoords);
+      } else {
+        const found = getExitById(destMode);
+        if (found) dest = { ...found, miles: haversineMiles(selectedAddressCoords, [found.lng, found.lat]) };
+      }
+
+      if (!dest) {
+        updateResult("Destination data not found.", "Check data/open_water_exits.json");
+        return;
+      }
+
+      const destCoords = [dest.lng, dest.lat];
+
+      // Compute straight line distance and estimate time
+      const straightMiles = haversineMiles(selectedAddressCoords, destCoords);
+      const minutes = minutesFromMiles(straightMiles, speedMode);
+
+      // Draw
+      setStartMarker(selectedAddressCoords);
+      setEndMarker(destCoords);
+      drawLine(selectedAddressCoords, destCoords);
+      fitTo(selectedAddressCoords, destCoords);
+
+      const destName = dest.name || "Destination";
+      updateResult(
+        `${minutes} minutes to ${destName}`,
+        `${straightMiles.toFixed(1)} miles (estimate) | Boat height: ${boatHeight} ft`
+      );
+    });
+  </script>
 </body>
 </html>
