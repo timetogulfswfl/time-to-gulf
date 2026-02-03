@@ -14,7 +14,7 @@
 
   <style>
     body { font-family: Arial, sans-serif; margin: 0; }
-    .wrap { padding: 16px; max-width: 1100px; margin: auto; }
+    .wrap { padding: 16px; max-width: 1150px; margin: auto; }
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
     label { font-size: 12px; opacity: 0.8; display:block; margin-bottom: 6px; }
 
@@ -22,7 +22,7 @@
       padding: 10px;
       font-size: 14px;
       height: 42px;
-      width: 290px;
+      width: 260px;
       box-sizing: border-box;
     }
 
@@ -41,9 +41,58 @@
     }
 
     #map { height: 520px; border-top: 1px solid #ddd; margin-top: 12px; }
-    .results { margin-top: 12px; padding: 12px; background: #f7f7f7; border: 1px solid #e5e5e5; }
-    .small { font-size: 12px; opacity: 0.75; margin-top: 8px; line-height: 1.35; }
+
+    .results {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+    }
+
     .hint { font-size: 12px; margin-top: 6px; opacity: 0.85; }
+
+    .small {
+      font-size: 12px;
+      opacity: 0.75;
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #eee;
+      margin-left: 6px;
+    }
+
+    .warn {
+      padding: 10px;
+      border: 1px solid #f0c36d;
+      background: #fff7e6;
+      margin-top: 10px;
+      line-height: 1.35;
+    }
+
+    .bridge-box {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+
+    .bridge-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .bridge-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .muted { opacity: 0.8; font-size: 12px; }
   </style>
 </head>
 
@@ -69,7 +118,7 @@
             <option value="riverSE">Caloosahatchee River (SE Cape)</option>
           </optgroup>
 
-          <optgroup label="Islands">
+          <optgroup label="Islands (Top)">
             <option value="sanibelCauseway">Sanibel Island (Causeway)</option>
             <option value="sanibelLighthouse">Sanibel Lighthouse</option>
             <option value="captivaSouthSeas">Captiva Island (South Seas)</option>
@@ -80,6 +129,23 @@
             <option value="loversKey">Lovers Key</option>
             <option value="fmbTimesSquare">Fort Myers Beach (Times Square)</option>
           </optgroup>
+        </select>
+      </div>
+
+      <div>
+        <label>Boat Height</label>
+        <select id="boatHeight">
+          <option value="9">9 ft</option>
+          <option value="11">11 ft</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Water Type (Cape Coral)</label>
+        <select id="waterType">
+          <option value="unknown" selected>Unknown (not verified)</option>
+          <option value="salt">Saltwater (Gulf Access)</option>
+          <option value="fresh">Freshwater (No direct Gulf access)</option>
         </select>
       </div>
 
@@ -99,7 +165,7 @@
     </div>
 
     <div class="small">
-      Disclaimer: Estimates only. Not for navigation. Open Water uses the closest exit anchor and does not yet follow canals.
+      Notes: This MVP uses straight-line distance plus a multiplier. It does not follow canals yet. Bridge routing and clearances will appear once canal routing is enabled.
     </div>
   </div>
 
@@ -112,11 +178,9 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // =========================
-    // DESTINATIONS
-    // =========================
+    // Destinations
     const destinations = {
-      // Open Water exits (auto-pick nearest)
+      // Open Water exits: auto-pick nearest
       openWater: {
         name: "Nearest Open Water",
         exits: [
@@ -134,7 +198,7 @@
       riverYachtClub: { name: "Caloosahatchee River (Yacht Club)", lng: -81.9706, lat: 26.5450 },
       riverSE: { name: "Caloosahatchee River (SE Cape)", lng: -81.9415, lat: 26.5480 },
 
-      // Islands (anchor points)
+      // Islands (Top)
       sanibelCauseway: { name: "Sanibel Island (Causeway)", lng: -82.0826, lat: 26.4807 },
       sanibelLighthouse: { name: "Sanibel Lighthouse", lng: -82.0182, lat: 26.4524 },
       captivaSouthSeas: { name: "Captiva Island (South Seas)", lng: -82.1930, lat: 26.5218 },
@@ -249,6 +313,30 @@
       }
     }
 
+    // Placeholder bridge report for MVP
+    function renderBridgeReport(boatHeightFt, isCanalRoutingEnabled) {
+      if (!isCanalRoutingEnabled) {
+        return `
+          <div class="bridge-box">
+            <div class="bridge-title">Bridge Report <span class="badge">Coming soon</span></div>
+            <div class="muted">
+              Boat height selected: <strong>${boatHeightFt} ft</strong><br/>
+              Canal routing is not enabled yet, so bridge clearances are not evaluated.
+            </div>
+          </div>
+        `;
+      }
+
+      // Later, when routing exists, we will return real bridge list + warnings here.
+      return "";
+    }
+
+    function waterTypeLabel(val) {
+      if (val === "salt") return "Saltwater (Gulf Access)";
+      if (val === "fresh") return "Freshwater (No direct Gulf access)";
+      return "Unknown (not verified)";
+    }
+
     // =========================
     // SEARCH BOX INIT
     // =========================
@@ -266,14 +354,12 @@
 
         selectedStart = start;
         selectedHintEl.textContent = "Selected: " + start.place;
-        resultsEl.textContent = "Now pick a destination and click Calculate.";
+        resultsEl.textContent = "Pick destination, boat height, and water type, then click Calculate.";
       });
     }
 
     if (window.customElements && customElements.whenDefined) {
-      customElements.whenDefined("mapbox-search-box").then(() => {
-        initSearchBox();
-      });
+      customElements.whenDefined("mapbox-search-box").then(() => initSearchBox());
     } else {
       window.addEventListener("DOMContentLoaded", initSearchBox);
     }
@@ -287,9 +373,38 @@
         return;
       }
 
-      const destKey = document.getElementById("dest").value;
+      const waterType = document.getElementById("waterType").value;
+      const boatHeightFt = Number(document.getElementById("boatHeight").value);
       const speedKey = document.getElementById("speed").value;
+      const destKey = document.getElementById("dest").value;
 
+      // Rule A: Freshwater is a hard stop
+      if (waterType === "fresh") {
+        resultsEl.innerHTML = `
+          <div class="warn">
+            <strong>No direct Gulf access</strong><br/>
+            Water type is set to <strong>${waterTypeLabel(waterType)}</strong>.<br/>
+            This tool will not estimate a boating route to open water for freshwater canals.
+          </div>
+          ${renderBridgeReport(boatHeightFt, false)}
+        `;
+
+        // Remove old markers and line if they exist
+        if (startMarker) startMarker.remove();
+        if (endMarker) endMarker.remove();
+        startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
+        endMarker = null;
+
+        // Clear route line if present
+        const id = "route-line";
+        if (mapReady && map.getLayer(id)) map.removeLayer(id);
+        if (mapReady && map.getSource(id)) map.removeSource(id);
+
+        map.flyTo({ center: [selectedStart.lng, selectedStart.lat], zoom: 12 });
+        return;
+      }
+
+      // Destination selection
       let end;
       if (destKey === "openWater") {
         end = pickNearestExit(selectedStart, destinations.openWater.exits);
@@ -301,17 +416,22 @@
       const mph = speedKey === "fast" ? 18 : 12;
       const minutes = Math.round((dist / mph) * 60);
 
+      // MVP result
       resultsEl.innerHTML = `
-        <div><strong>${minutes} minutes</strong></div>
-        <div>${dist.toFixed(1)} miles to ${end.name}</div>
+        <div><strong>${minutes} minutes</strong> to <strong>${end.name}</strong></div>
+        <div>${dist.toFixed(1)} miles (estimate)</div>
+        <div class="muted">Water type: <strong>${waterTypeLabel(waterType)}</strong> • Boat height: <strong>${boatHeightFt} ft</strong></div>
+        ${renderBridgeReport(boatHeightFt, false)}
       `;
 
+      // Markers
       if (startMarker) startMarker.remove();
       if (endMarker) endMarker.remove();
 
       startMarker = new mapboxgl.Marker().setLngLat([selectedStart.lng, selectedStart.lat]).addTo(map);
       endMarker = new mapboxgl.Marker().setLngLat([end.lng, end.lat]).addTo(map);
 
+      // Route line (straight line MVP)
       drawRouteLine(selectedStart, end);
 
       map.fitBounds(
