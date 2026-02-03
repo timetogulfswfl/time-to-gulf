@@ -1,0 +1,30 @@
+[
+  {
+    "id": "matlacha_pass",
+    "name": "Matlacha Pass (Open Gulf Access)",
+    "lat": 26.6352,
+    "lng": -82.1168,
+    "type": "pass"
+  },
+  {
+    "id": "pine_island_sound",
+    "name": "Pine Island Sound (Near Matlacha)",
+    "lat": 26.6510,
+    "lng": -82.1065,
+    "type": "sound"
+  },
+  {
+    "id": "cape_harbour",
+    "name": "Caloosahatchee River – Cape Harbour",
+    "lat": 26.5406,
+    "lng": -82.0096,
+    "type": "river"
+  },
+  {
+    "id": "yacht_club",
+    "name": "Caloosahatchee River – Cape Coral Yacht Club",
+    "lat": 26.5450,
+    "lng": -81.9706,
+    "type": "river"
+  }
+]
