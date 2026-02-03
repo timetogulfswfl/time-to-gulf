@@ -1,383 +1,160 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>Time to Gulf (MVP)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Mapbox GL JS -->
+  <!-- Mapbox -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet" />
 
-  <!-- Mapbox Search Web Component -->
+  <!-- Mapbox Search -->
   <script defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; margin: 0; }
-    .wrap { padding: 16px; max-width: 1150px; margin: 0 auto; }
-    h1 { margin: 8px 0 16px; font-size: 34px; }
-
+    .wrap { padding: 16px; max-width: 1200px; margin: auto; }
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-    label { font-size: 12px; opacity: 0.85; display: block; margin-bottom: 6px; }
-    .field { display: flex; flex-direction: column; }
-    select, input, button {
-      padding: 10px;
-      font-size: 14px;
-      height: 42px;
-      width: 260px;
-      box-sizing: border-box;
-      border: 1px solid #cfcfcf;
-      border-radius: 6px;
-      background: white;
-    }
-    button {
-      cursor: pointer;
-      border: none;
-      background: #0b5ed7;
-      color: white;
-      width: 180px;
-    }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    #results {
-      margin-top: 12px;
-      border: 1px solid #e6e6e6;
-      border-radius: 8px;
-      padding: 12px;
-      min-height: 48px;
-      background: #fafafa;
-    }
-    .muted { font-size: 12px; opacity: 0.8; margin-top: 6px; }
-    .warn { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 8px; }
-
-    #map {
-      margin-top: 14px;
-      height: 520px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid #e6e6e6;
-    }
-
-    /* Make the search input look consistent */
-    mapbox-address-autofill input {
-      width: 420px !important;
-      max-width: 100%;
-    }
-
-    @media (max-width: 700px) {
-      mapbox-address-autofill input { width: 100% !important; }
-      select, input, button { width: 100%; }
-      button { width: 100%; }
-    }
+    label { font-size: 12px; opacity: 0.8; display: block; }
+    select, button { padding: 10px; height: 42px; width: 240px; }
+    button { background: #0b5ed7; color: white; border: none; cursor: pointer; }
+    #map { height: 520px; margin-top: 12px; }
+    .result { margin-top: 12px; padding: 12px; border: 1px solid #ddd; }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <h1>Time to Gulf (MVP)</h1>
+<div class="wrap">
+  <h2>Time to Gulf (MVP)</h2>
 
-    <div class="row">
-      <div class="field" style="min-width: 420px;">
-        <label>Address</label>
-        <mapbox-address-autofill id="addrAutofill"></mapbox-address-autofill>
-      </div>
-
-      <div class="field">
-        <label>Destination</label>
-        <select id="destination">
-          <option value="nearest_open_water">Nearest Open Water</option>
-          <option value="matlacha_pass">Matlacha Pass</option>
-          <option value="pine_island_sound">Pine Island Sound (near Matlacha)</option>
-          <option value="cape_harbour">Caloosahatchee River (Cape Harbour)</option>
-          <option value="yacht_club">Caloosahatchee River (Yacht Club)</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Speed Mode</label>
-        <select id="speedMode">
-          <option value="conservative">Conservative (12 mph)</option>
-          <option value="fast">Fast (18 mph)</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Boat Height (ft)</label>
-        <select id="boatHeight">
-          <option value="9">9 ft</option>
-          <option value="11">11 ft</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>&nbsp;</label>
-        <button id="calcBtn" disabled>Calculate</button>
-      </div>
+  <div class="row">
+    <div>
+      <label>Address</label>
+      <mapbox-address-autofill id="address"></mapbox-address-autofill>
     </div>
 
-    <div id="results">
-      Start typing an address and select it from the list.
-      <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
+    <div>
+      <label>Destination</label>
+      <select id="destination">
+        <option value="nearest">Nearest Open Water (closest exit)</option>
+      </select>
     </div>
 
-    <div id="map"></div>
+    <div>
+      <label>Boat Height</label>
+      <select id="boatHeight">
+        <option value="9">9 ft</option>
+        <option value="11">11 ft</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Speed Mode</label>
+      <select id="speed">
+        <option value="conservative">Conservative</option>
+        <option value="normal">Normal</option>
+      </select>
+    </div>
+
+    <button onclick="calculate()">Calculate</button>
   </div>
 
-  <script>
-    // ===============================
-    // CONFIG
-    // ===============================
-    mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
+  <div class="result" id="result"></div>
+</div>
 
-    const resultsEl = document.getElementById("results");
-    const calcBtn = document.getElementById("calcBtn");
-    const destinationEl = document.getElementById("destination");
-    const speedModeEl = document.getElementById("speedMode");
-    const boatHeightEl = document.getElementById("boatHeight");
+<div id="map"></div>
 
-    let map;
-    let startMarker = null;
-    let endMarker = null;
-    let selectedStart = null; // {lat,lng,place_name}
+<script>
+mapboxgl.accessToken = "pk.eyJ1IjoidGltZXRvZ3VsZnN3ZmwiLCJhIjoiY21sNXF3aDRkMDZrYjNlcHJmM3gxOWE4dCJ9.l1D8DbGoXWddoYTxZNV0MQ";
 
-    // Loaded from /data/open_water_exits.json
-    let OPEN_WATER_EXITS = [];
+const map = new mapboxgl.Map({
+  container: "map",
+  style: "mapbox://styles/mapbox/streets-v12",
+  center: [-81.95, 26.65],
+  zoom: 11
+});
 
-    // ===============================
-    // HELPERS
-    // ===============================
-    function milesBetween(aLat, aLng, bLat, bLng) {
-      const R = 3958.8;
-      const toRad = (d) => (d * Math.PI) / 180;
-      const dLat = toRad(bLat - aLat);
-      const dLng = toRad(bLng - aLng);
-      const x =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) *
-        Math.sin(dLng / 2) ** 2;
-      return 2 * R * Math.asin(Math.sqrt(x));
-    }
+let canalsLoaded = false;
+let exits = [];
 
-    function clearRouteLine() {
-      if (!map) return;
-      if (map.getLayer("route-line")) map.removeLayer("route-line");
-      if (map.getSource("route-line")) map.removeSource("route-line");
-    }
+map.on("load", async () => {
+  // Load canal network
+  const canals = await fetch("data/cape_coral_canals.geojson").then(r => r.json());
+  map.addSource("canals", { type: "geojson", data: canals });
+  map.addLayer({
+    id: "canals",
+    type: "line",
+    source: "canals",
+    paint: { "line-color": "#4fa3ff", "line-width": 2 }
+  });
+  canalsLoaded = true;
 
-    function drawRouteLine(startLngLat, endLngLat) {
-      clearRouteLine();
+  // Load exits
+  exits = await fetch("data/open_water_exits.json").then(r => r.json());
+});
 
-      const feature = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [startLngLat, endLngLat]
-        }
-      };
+async function calculate() {
+  if (!canalsLoaded) return alert("Canals not loaded yet.");
 
-      map.addSource("route-line", { type: "geojson", data: feature });
-      map.addLayer({
-        id: "route-line",
-        type: "line",
-        source: "route-line",
-        paint: {
-          "line-color": "#0b5ed7",
-          "line-width": 4
-        }
-      });
-    }
+  const address = document.querySelector("mapbox-address-autofill").value;
+  if (!address) return alert("Select an address from the dropdown.");
 
-    function fitToPoints(a, b) {
-      const minLng = Math.min(a[0], b[0]);
-      const minLat = Math.min(a[1], b[1]);
-      const maxLng = Math.max(a[0], b[0]);
-      const maxLat = Math.max(a[1], b[1]);
-      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 70 });
-    }
+  const geo = await fetch(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}`
+  ).then(r => r.json());
 
-    function pickNearestExit(startLat, startLng) {
-      if (!OPEN_WATER_EXITS.length) return null;
-      let best = null;
-      for (const ex of OPEN_WATER_EXITS) {
-        const d = milesBetween(startLat, startLng, ex.lat, ex.lng);
-        if (!best || d < best.miles) best = { exit: ex, miles: d };
-      }
-      return best;
-    }
+  const start = geo.features[0].geometry.coordinates;
 
-    function getExitById(id) {
-      return OPEN_WATER_EXITS.find(x => x.id === id) || null;
-    }
+  let closest = exits[0];
+  let best = Infinity;
 
-    async function loadOpenWaterExits() {
-      try {
-        const resp = await fetch("./data/open_water_exits.json", { cache: "no-store" });
-        if (!resp.ok) throw new Error("Could not load ./data/open_water_exits.json");
-        OPEN_WATER_EXITS = await resp.json();
+  exits.forEach(e => {
+    const d = Math.hypot(start[0]-e.lng, start[1]-e.lat);
+    if (d < best) { best = d; closest = e; }
+  });
 
-        // If you later expand exits in the JSON file, we can auto-populate the dropdown.
-        console.log("Loaded open water exits:", OPEN_WATER_EXITS);
-      } catch (e) {
-        console.error(e);
-        OPEN_WATER_EXITS = [];
-        resultsEl.innerHTML = `
-          <div class="warn">
-            <strong>Open water exits file not loaded.</strong><br/>
-            Make sure you have <code>data/open_water_exits.json</code> committed.
-          </div>
-          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-        `;
+  drawRoute(start, [closest.lng, closest.lat]);
+
+  const miles = best * 69;
+  const speed = document.getElementById("speed").value === "conservative" ? 8 : 12;
+  const minutes = Math.round((miles / speed) * 60);
+
+  document.getElementById("result").innerHTML = `
+    <strong>${minutes} minutes to ${closest.name}</strong><br>
+    ${miles.toFixed(1)} miles (estimate)<br>
+    Boat height: ${document.getElementById("boatHeight").value} ft<br>
+    <em>Canal routing active. Bridge logic coming next.</em>
+  `;
+}
+
+function drawRoute(start, end) {
+  if (map.getSource("route")) {
+    map.removeLayer("route");
+    map.removeSource("route");
+  }
+
+  map.addSource("route", {
+    type: "geojson",
+    data: {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: [start, end]
       }
     }
+  });
 
-    // ===============================
-    // INIT MAP
-    // ===============================
-    function initMap() {
-      map = new mapboxgl.Map({
-        container: "map",
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: [-81.95, 26.62], // Cape Coral area
-        zoom: 10
-      });
+  map.addLayer({
+    id: "route",
+    type: "line",
+    source: "route",
+    paint: { "line-color": "#003cff", "line-width": 4 }
+  });
 
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
-    }
-
-    // ===============================
-    // INIT ADDRESS AUTOFILL
-    // ===============================
-    function initAutofill() {
-      const autofill = document.getElementById("addrAutofill");
-
-      // Create the internal input
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "Start typing an address and select it from the list";
-      input.autocomplete = "off";
-      autofill.appendChild(input);
-
-      // Configure autofill component
-      autofill.accessToken = mapboxgl.accessToken;
-      autofill.options = {
-        country: "US",
-        proximity: { longitude: -81.95, latitude: 26.62 } // Cape Coral
-      };
-
-      // When user picks a suggestion, this event fires
-      autofill.addEventListener("retrieve", (ev) => {
-        const feature = ev.detail?.features?.[0];
-        if (!feature) return;
-
-        const [lng, lat] = feature.geometry.coordinates;
-        selectedStart = {
-          lat,
-          lng,
-          place_name: feature.properties?.full_address || feature.place_name || "Selected address"
-        };
-
-        calcBtn.disabled = false;
-
-        resultsEl.innerHTML = `
-          <div><strong>Selected:</strong> ${selectedStart.place_name}</div>
-          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-        `;
-
-        // Drop or move start marker
-        if (startMarker) startMarker.remove();
-        startMarker = new mapboxgl.Marker().setLngLat([lng, lat]).addTo(map);
-
-        // Zoom closer to selected point
-        map.flyTo({ center: [lng, lat], zoom: 12 });
-
-        // Clear any old route
-        if (endMarker) { endMarker.remove(); endMarker = null; }
-        clearRouteLine();
-      });
-    }
-
-    // ===============================
-    // CALCULATE
-    // ===============================
-    function calculate() {
-      if (!selectedStart) {
-        resultsEl.innerHTML = `
-          <div class="warn"><strong>Please select an address from the suggestions first.</strong></div>
-          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-        `;
-        return;
-      }
-
-      if (!OPEN_WATER_EXITS.length) {
-        resultsEl.innerHTML = `
-          <div class="warn"><strong>Open water exits not loaded.</strong> Please confirm <code>data/open_water_exits.json</code> exists.</div>
-          <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-        `;
-        return;
-      }
-
-      const destValue = destinationEl.value;
-      const speedMode = speedModeEl.value;
-      const boatHeight = Number(boatHeightEl.value);
-
-      // mph assumption
-      const mph = speedMode === "fast" ? 18 : 12;
-
-      let chosenExit = null;
-      let miles = 0;
-
-      if (destValue === "nearest_open_water") {
-        const nearest = pickNearestExit(selectedStart.lat, selectedStart.lng);
-        if (!nearest) {
-          resultsEl.innerHTML = `
-            <div class="warn"><strong>No exits found.</strong></div>
-            <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-          `;
-          return;
-        }
-        chosenExit = nearest.exit;
-        miles = nearest.miles;
-      } else {
-        chosenExit = getExitById(destValue);
-        if (!chosenExit) {
-          resultsEl.innerHTML = `
-            <div class="warn"><strong>Destination not found in exits file.</strong></div>
-            <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-          `;
-          return;
-        }
-        miles = milesBetween(selectedStart.lat, selectedStart.lng, chosenExit.lat, chosenExit.lng);
-      }
-
-      const minutes = Math.round((miles / mph) * 60);
-
-      // Update end marker
-      if (endMarker) endMarker.remove();
-      endMarker = new mapboxgl.Marker().setLngLat([chosenExit.lng, chosenExit.lat]).addTo(map);
-
-      // Draw route line (temporary straight line)
-      drawRouteLine([selectedStart.lng, selectedStart.lat], [chosenExit.lng, chosenExit.lat]);
-      fitToPoints([selectedStart.lng, selectedStart.lat], [chosenExit.lng, chosenExit.lat]);
-
-      resultsEl.innerHTML = `
-        <div><strong>${minutes} minutes</strong></div>
-        <div>${miles.toFixed(1)} miles to <strong>${chosenExit.name}</strong></div>
-        <div class="muted">Speed: ${mph} mph | Boat height: ${boatHeight} ft</div>
-        <div class="muted">Next step: replace straight line with canal routing and bridge clearance checks.</div>
-        <div class="muted">Disclaimer: Estimates only. Not for navigation.</div>
-      `;
-    }
-
-    // ===============================
-    // BOOT
-    // ===============================
-    window.addEventListener("DOMContentLoaded", async () => {
-      initMap();
-      await loadOpenWaterExits();
-      initAutofill();
-
-      calcBtn.addEventListener("click", calculate);
-    });
-  </script>
+  new mapboxgl.Marker().setLngLat(start).addTo(map);
+  new mapboxgl.Marker().setLngLat(end).addTo(map);
+}
+</script>
 </body>
 </html>
